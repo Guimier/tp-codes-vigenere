@@ -31,7 +31,6 @@ struct Vigenere
 				out += text[i] + 'A' - 'a';
 		}
 
-		// ADD THE VIGENERE CRYPTION 	
 		for (size_t i = 0 ; i <out.size() ; ++i)
 		{
 			out[i] = ( ( out[i] - 'A' + key[i%key.size()] ) % 26 ) + 'A';
