@@ -4,6 +4,7 @@
 #include <map>
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <queue>
 #include <cmath>
 #include <cstdlib>
@@ -82,7 +83,7 @@ struct CharSequenceStatisticsComputer {
 		double res = 0;
 		
 		for ( int i = 0; i < 26; ++i ) {
-			double eq = chars.size() * target[26 + i - offset % 26];
+			double eq = chars.size() * target[i + offset % 26];
 			res += pow( occurences[i] - eq, 2 ) / eq;
 		}
 		
@@ -105,10 +106,12 @@ string normalizeString( const string in ) {
 	return out;
 }
 
-struct ICSort {
-	typedef pair<int,double> couple;
+template <typename T, typename U, typename C>
+struct PairSecondSort {
+	typedef pair<T,U> couple;
+	C comp;
 	bool operator () ( const couple& a, const couple& b ) {
-		return a.second < b.second;
+		return comp( a.second, b.second );
 	}
 };
 
@@ -129,13 +132,19 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 		int guessFrequency( string input )
 		{
 
-			priority_queue<ICSort::couple, vector<ICSort::couple>, ICSort> pq;
+			priority_queue<pair<int,double>, vector<pair<int,double>>, PairSecondSort<int,double,less<double> > > pq;
 			for ( int f = 1; f <= 10; ++ f ) {
 				pq.push( make_pair( f, averageIndexOfCoincidence( input, f ) ) );
 				if ( verbose > 1 ) cout << "f = " << f << "; ic = " << averageIndexOfCoincidence( input, f ) << endl;
 			}
 			
-			return pq.top().first;
+			int res = pq.top().first;
+			double xhi = pq.top().second;
+			pq.pop();
+			
+			if ( verbose > 0 ) cout << "Found frequency \"" << res << "\" (" << xhi << ", alternative is \"" << pq.top().first << "\", " << pq.top().second << ")" << endl;
+			
+			return res;
 		}
 
 		pair<string, string> analyze( string input, int freq ) 
@@ -150,28 +159,31 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 			}
 			
 			string key;
+			string alternateKey;
 			
-			bool deepDebug = false;
+			bool deepDebug = verbose > 1;
 			
 			for ( int i = 0; i < freq; ++i ) {
-				if ( deepDebug ) cout << "Substring offset: " << i << endl;
+				if ( deepDebug ) cout << "Substring offset: " << i << endl << "\t";
 				Serie<char> serie( input, freq, i );
-				double knownMin = numeric_limits<double>::max();
-				int minIndex = -1;
+				
+				priority_queue<pair<char,double>, vector<pair<char,double> >, PairSecondSort<char,double,greater<double> > > pq;
 				
 				for ( int offset = 0; offset < 26; ++offset ) {
 					double xhi = xhiSquared( serie, targets, offset );
-					if ( deepDebug ) cout << "\tCaesar/" << offset << ": " << xhi;
-					if ( xhi <= knownMin ) {
-						if ( deepDebug ) cout << " (new min)";
-						knownMin = xhi;
-						minIndex = offset;
-					}
-					if ( deepDebug ) cout << endl;
+					char c = 'A' + offset;
+					if ( deepDebug ) cout << c << ": " << xhi << ' ';
+					pq.push( make_pair( c, xhi ) );
 				}
 				
-				key += ( 'A' + minIndex );
+				if ( deepDebug ) cout << endl;
+				
+				key += pq.top().first;
+				pq.pop();
+				alternateKey += pq.top().first;
 			}
+			
+			if ( verbose > 0 ) cout << "Found key \"" << key << "\" (alternative \"" << alternateKey << "\")" << endl;
 
 			Vigenere dec( key );
 	
