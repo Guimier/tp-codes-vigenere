@@ -18,7 +18,6 @@ int verbose = 1;
  
 typedef array<pair<char, double>, 26> FreqArray;
 
-template <typename T>
 class Serie
 {
 	private:
@@ -33,14 +32,14 @@ class Serie
 		
 		inline size_t size() const { return ( v.size() - offset ) / freq; }
 		
-		inline T operator [] ( size_t i ) const { return v[ offset + i * freq ]; }
-		inline const T& operator [] ( size_t i ) { return v[ offset + i * freq ]; }
+		inline char operator [] ( size_t i ) const { return v[ offset + i * freq ]; }
+		inline const char& operator [] ( size_t i ) { return v[ offset + i * freq ]; }
 	
 };
 
 struct CharSequenceStatisticsComputer {
 
-	vector<size_t> countOccurences( Serie<char>& serie )
+	vector<size_t> countOccurences( Serie& serie )
 	{
 		vector<size_t> occurences( 26 );
 		
@@ -51,7 +50,7 @@ struct CharSequenceStatisticsComputer {
 		return occurences;
 	}
 
-	double indexOfCoincidence( Serie<char> chars )
+	double indexOfCoincidence( Serie chars )
 	{
 		vector<size_t> occurences = countOccurences( chars );
 
@@ -70,13 +69,13 @@ struct CharSequenceStatisticsComputer {
 	{
 		double sum = 0;
 		for ( int i = 0; i < freq; ++i ) {
-			sum += indexOfCoincidence( Serie<char>( list, freq, i ) );
+			sum += indexOfCoincidence( Serie( list, freq, i ) );
 		}
 		
 		return sum / freq;
 	}
 	
-	double xhiSquared( Serie<char> chars, const array<double, 26>& target, int offset )
+	double xhiSquared( Serie chars, const array<double, 26>& target, int offset )
 	{
 		vector<size_t> occurences = countOccurences( chars );
 		
@@ -165,7 +164,7 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 			
 			for ( int i = 0; i < freq; ++i ) {
 				if ( deepDebug ) cout << "Substring offset: " << i << endl << "\t";
-				Serie<char> serie( input, freq, i );
+				Serie serie( input, freq, i );
 				
 				priority_queue<pair<char,double>, vector<pair<char,double> >, PairSecondSort<char,double,greater<double> > > pq;
 				
