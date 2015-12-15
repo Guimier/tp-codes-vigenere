@@ -18,6 +18,9 @@ int verbose = 1;
  
 typedef array<pair<char, double>, 26> FreqArray;
 
+/**
+ *Class which represents a serie of characters
+ */
 class Serie
 {
 	private:
@@ -41,7 +44,9 @@ class Serie
 		}
 		
 };
-
+/**
+ * Statistic tools
+ */
 struct CharSequenceStatisticsComputer {
 
 	vector<size_t> countOccurences( Serie& serie )
@@ -55,6 +60,13 @@ struct CharSequenceStatisticsComputer {
 		return occurences;
 	}
 
+	/**
+	 *Compute index of coincidence for a serie of char
+	 *@param chars
+	 *    A serie of characters
+	 *@return 
+	 *	The value of index of coincidence 
+	 */
 	double indexOfCoincidence( Serie chars )
 	{
 		vector<size_t> occurences = countOccurences( chars );
@@ -69,7 +81,14 @@ struct CharSequenceStatisticsComputer {
 
 		return sum / double( chars.size() * ( chars.size() - 1 ) );
 	}
-	
+	/**
+	*Compute the average value of multiple index of coincidence
+	*@param list
+	*    list of charcaters
+	*@param freq
+	*	Length of the key
+	*/
+ 
 	double averageIndexOfCoincidence( const string list, int freq )
 	{
 		double sum = 0;
@@ -80,21 +99,38 @@ struct CharSequenceStatisticsComputer {
 		return sum / freq;
 	}
 	
+	/**
+	 *Compute the xhi square
+	 *@param chars
+	 *	Serie of characters
+	 *@param target
+	 *	Array who stocks the frequency of the characters in defined language
+	 *@param offset
+	 *	Offset of the vigenere code
+	 *@return
+	 *	The value of xhi squared
+	 */
 	double xhiSquared( Serie chars, const array<double, 26>& target, int offset )
 	{
 		vector<size_t> occurences = countOccurences( chars );
 		
-		double res = 0;
+		double sum = 0;
 		for ( int i = 0; i < 26; ++i ) {
 			double eq = double( chars.size() ) * target[( i - offset ) % 26];
 			double diff = occurences[i] - eq;
-			res += diff * diff / eq;
+			sum += diff * diff / eq;
 		}
-		return res;
+		return sum;
 	}
 
 };
-
+/**
+ *Normalize a string in upper case without any special chars
+ *@param in
+ *   String to normalize
+ *@return out
+ *   String normalized
+ */
 string normalizeString( const string in ) {
 	string out;
 	
@@ -109,6 +145,9 @@ string normalizeString( const string in ) {
 	return out;
 }
 
+/**
+ * Fonctor who allow the sort with the second member of a pair
+ */
 template <typename T, typename U, typename C>
 struct PairSecondSort {
 	typedef pair<T,U> couple;
@@ -117,21 +156,26 @@ struct PairSecondSort {
 		return comp( a.second, b.second );
 	}
 };
-
+/**
+ *Class which guess the keys of encrypted char
+ */
 class VigenereCryptanalysis: CharSequenceStatisticsComputer
 {
 	private:
 		array<double, 26> targets;
-		array<double, 26> sortedTargets;
 
 	public:
-		VigenereCryptanalysis(const array<double, 26>& targetFreqs) 
-		{
-			targets = targetFreqs;
-			sortedTargets = targets;
-			sort(sortedTargets.begin(), sortedTargets.end());
-		}
+		VigenereCryptanalysis(const array<double, 26>& targetFreqs):
+			targets(targetFreqs)
+		{}
 		
+		/**
+		 *Guess the key length for a given input
+		 *@param input
+		 *    The encrypted string
+		 *@return res
+		 *	The most probable length of the key
+		 */
 		int guessFrequency( string input )
 		{
 
@@ -154,11 +198,21 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 			
 			return res;
 		}
-
+		
+		/**
+		 *Decrypt the input
+		 *@param input
+		 *    Encrypted text
+		 *@param freq
+		 *    Key length. Use 0 for guessing the freq
+		 *@return
+		 *	A pair of 1. decrypted text, 2. key.
+		 */
 		pair<string, string> analyze( string input, int freq ) 
 		{
 			input = normalizeString( input );
 
+			// Determine key length from the input
 			if ( freq <= 0 ) {
 				freq = guessFrequency( input );
 				if ( verbose > 0 ) cout << "Using guessed frequency: " << freq << endl;
@@ -166,11 +220,13 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 				if ( verbose > 0 ) cout << "Using provided frequency: " << freq << endl;
 			}
 			
+			//Found keys
 			string key;
 			string alternateKey;
 			
 			bool deepDebug = verbose > 1;
 			
+			//For each subsequence		
 			for ( int i = 0; i < freq; ++i ) {
 				if ( deepDebug ) cout << "Substring offset: " << i << endl << "\t";
 				
@@ -182,6 +238,7 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 					PairSecondSort<char,double,greater<double> >
 				> pq;
 				
+				//Compute the value of the xhi square for each key letters
 				for ( int offset = 0; offset < 26; ++offset ) {
 					double xhi = xhiSquared( serie, targets, offset );
 					char c = 'A' + offset;
@@ -191,6 +248,7 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 				
 				if ( deepDebug ) cout << endl;
 				
+				//Remember best and second best letters
 				key += pq.top().first;
 				pq.pop();
 				alternateKey += pq.top().first;
@@ -211,14 +269,21 @@ int main( int argc, char* argv[] )
 		cerr << "Missing ciphertext id" << endl;
 		exit( 1 );
 	}
-	
+	//list of encrypted texts
 	char* inputs[] = {
+		// #1
 		"zbpuevpuqsdlzgllksousvpasfpddggaqwptdgptzweemqzrdjtddefekeferdprrcyndgluaowcnbptzzzrbvpssfpashpncotemhaeqrferdlrlwwertlussfikgoeuswotfdgqsyasrlnrzppdhtticfrciwurhcezrpmhtpuwiyenamrdbzyzwelzucamrptzqseqcfgdrfrhrpatsepzgfnaffisbpvblisrplzgnemswaqoxpdseehbeeksdptdttqsdddgxurwnidbdddplncsd",
+		// #2
 		"gmyxzoocxziancxktanmyolupjrztgxwshctzluibuicyzwxyqtvqxzukibkotuxkagbknmimmzzyajvjzampqyzloinoiqknaumbknknvkaiakgwtnilvvzvqydmvjcximrvzkilxzqtomrgqmdjrzyazvzmmyjgkoaknkuiaivknvvy",
+		// #3
 		"iefomntuohenwfwsjbsfftpgsnmhzsbbizaomosiuxycqaelrwsklqzekjvwsivijmhuvasmvwjewlzgubzlavclhgmuhwhakookakkgmrelgeefvwjelksedtyhsgghbamiyweeljcemxsohlnzujagkshakawwdxzcmvkhuwswlqwtmlshojbsguelgsumlijsmlbsixuhsdbysdaolfatxzofstszwryhwjenuhgukwzmshbagigzzgnzhzsbtzhalelosmlasjdttqzeswwwrklfguzl",
+		// #4
 		"MOMUDEKAPVTQEFMOEVHPAJMIICDCTIFGYAGJSPXYALUYMNSMYHVUXJELEPXJFXGCMJHKDZRYICUHYPUSPGIGMOIYHFWHTCQKMLRDITLXZLJFVQGHOLWCUHLOMDSOEKTALUVYLNZRFGBXPHVGALWQISFGRPHJOOFWGUBYILAPLALCAFAAMKLGCETDWVOELJIKGJBXPHVGALWQCSNWBUBYHCUHKOCEXJEYKBQKVYKIIEHGRLGHXEOLWAWFOJILOVVRHPKDWIHKNATUHNVRYAQDIVHXFHRZVQWMWVLGSHNNLVZSJLAKIFHXUFXJLXMTBLQVRXXHRFZXGVLRAJIEXPRVOSMNPKEPDTLPRWMJAZPKLQUZAALGZXGVLKLGJTUIITDSUREZXJERXZSHMPSTMTEOEPAPJHSMFNBYVQUZAALGAYDNMPAQOWTUHDBVTSMUEUIMVHQGVRWAEFSPEMPVEPKXZYWLKJAGWALTVYYOBYIXOKIHPDSEVLEVRVSGBJOGYWFHKBLGLXYAMVKISKIEHYIMAPXUOISKPVAGNMZHPWTTZPVXFCCDTUHJHWLAPFYULTBUXJLNSIJVVYOVDJSOLXGTGRVOSFRIICTMKOJFCQFKTINQBWVHGTENLHHOGCSPSFPVGJOKMSIFPRZPAASATPTZFTPPDPORRFTAXZPKALQAWMIUDBWNCTLEFKOZQDLXBUXJLASIMRPNMBFZCYLVWAPVFQRHZVZGZEFKBYIOOFXYEVOWGBBXVCBXBAWGLQKCMICRRXMACUOIKHQUAJEGLOIJHHXPVZWJEWBAFWAMLZZRXJEKAHVFASMULVVUTTGK",
+		// Part 1 result
 		"BPSRAUNOHCWCBGITMPJQFMEXCXYCIAGPSXCPSXWWEROQCOPITRAEBENTGAYCPMSXPQNYWCDQEVJMAVIDQRZEQESBPCEWCXCYCVYGYCWI",
+		// Not encrypted text (key is A*)
 		"la Declaration des droits avait un grand nombre de partisans et quelques adversaires ; tous avaient raison et elle etait à la fois necessaire et dangereuse ; necessaire pour marcher suivant l'ordre des idees politiques ; dangereuse pour le peuple qui se meprend facilement et qui ne sait pas qu'il n'y a point de droits sans devoirs ; que pour jouir des uns, il faut se soumettre aux autres. Il en devait naitre une infinite de pretentions",
+		// Small text for verbose tests
 		"GZGT",
 		NULL
 	};
