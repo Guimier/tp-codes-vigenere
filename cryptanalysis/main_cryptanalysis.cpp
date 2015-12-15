@@ -29,12 +29,17 @@ class Serie
 		Serie( const string &v, int freq, size_t offset ):
 			v( v ), freq( freq ), offset( offset )
 		{}
-		
-		inline size_t size() const { return ( v.size() - offset ) / freq; }
-		
-		inline char operator [] ( size_t i ) const { return v[ offset + i * freq ]; }
-		inline const char& operator [] ( size_t i ) { return v[ offset + i * freq ]; }
 	
+		inline char operator [] ( size_t p ) { return v[ offset + p * freq ]; }
+		inline size_t size() {
+			size_t totalSizeWithoutOffset = v.size() - offset;
+			size_t res = totalSizeWithoutOffset / freq;
+			if ( totalSizeWithoutOffset % freq != 0 ) {
+				++res;
+			}
+			return res;
+		}
+		
 };
 
 struct CharSequenceStatisticsComputer {
@@ -80,12 +85,11 @@ struct CharSequenceStatisticsComputer {
 		vector<size_t> occurences = countOccurences( chars );
 		
 		double res = 0;
-		
 		for ( int i = 0; i < 26; ++i ) {
-			double eq = chars.size() * target[i + offset % 26];
-			res += pow( occurences[i] - eq, 2 ) / eq;
+			double eq = double( chars.size() ) * target[( i - offset ) % 26];
+			double diff = occurences[i] - eq;
+			res += diff * diff / eq;
 		}
-		
 		return res;
 	}
 
@@ -132,7 +136,12 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 		{
 
 			priority_queue<pair<int,double>, vector<pair<int,double>>, PairSecondSort<int,double,less<double> > > pq;
-			for ( int f = 1; f <= 10; ++ f ) {
+			size_t tests = input.size() / 20;
+			if ( tests == 0 ) {
+				tests = 1;
+			}
+			
+			for ( size_t f = 1; f <= tests; ++ f ) {
 				pq.push( make_pair( f, averageIndexOfCoincidence( input, f ) ) );
 				if ( verbose > 1 ) cout << "f = " << f << "; ic = " << averageIndexOfCoincidence( input, f ) << endl;
 			}
@@ -164,9 +173,14 @@ class VigenereCryptanalysis: CharSequenceStatisticsComputer
 			
 			for ( int i = 0; i < freq; ++i ) {
 				if ( deepDebug ) cout << "Substring offset: " << i << endl << "\t";
+				
 				Serie serie( input, freq, i );
 				
-				priority_queue<pair<char,double>, vector<pair<char,double> >, PairSecondSort<char,double,greater<double> > > pq;
+				priority_queue<
+					pair<char,double>,
+					vector<pair<char,double> >,
+					PairSecondSort<char,double,greater<double> >
+				> pq;
 				
 				for ( int offset = 0; offset < 26; ++offset ) {
 					double xhi = xhiSquared( serie, targets, offset );
@@ -198,30 +212,38 @@ int main( int argc, char* argv[] )
 		exit( 1 );
 	}
 	
+	char* inputs[] = {
+		"zbpuevpuqsdlzgllksousvpasfpddggaqwptdgptzweemqzrdjtddefekeferdprrcyndgluaowcnbptzzzrbvpssfpashpncotemhaeqrferdlrlwwertlussfikgoeuswotfdgqsyasrlnrzppdhtticfrciwurhcezrpmhtpuwiyenamrdbzyzwelzucamrptzqseqcfgdrfrhrpatsepzgfnaffisbpvblisrplzgnemswaqoxpdseehbeeksdptdttqsdddgxurwnidbdddplncsd",
+		"gmyxzoocxziancxktanmyolupjrztgxwshctzluibuicyzwxyqtvqxzukibkotuxkagbknmimmzzyajvjzampqyzloinoiqknaumbknknvkaiakgwtnilvvzvqydmvjcximrvzkilxzqtomrgqmdjrzyazvzmmyjgkoaknkuiaivknvvy",
+		"iefomntuohenwfwsjbsfftpgsnmhzsbbizaomosiuxycqaelrwsklqzekjvwsivijmhuvasmvwjewlzgubzlavclhgmuhwhakookakkgmrelgeefvwjelksedtyhsgghbamiyweeljcemxsohlnzujagkshakawwdxzcmvkhuwswlqwtmlshojbsguelgsumlijsmlbsixuhsdbysdaolfatxzofstszwryhwjenuhgukwzmshbagigzzgnzhzsbtzhalelosmlasjdttqzeswwwrklfguzl",
+		"MOMUDEKAPVTQEFMOEVHPAJMIICDCTIFGYAGJSPXYALUYMNSMYHVUXJELEPXJFXGCMJHKDZRYICUHYPUSPGIGMOIYHFWHTCQKMLRDITLXZLJFVQGHOLWCUHLOMDSOEKTALUVYLNZRFGBXPHVGALWQISFGRPHJOOFWGUBYILAPLALCAFAAMKLGCETDWVOELJIKGJBXPHVGALWQCSNWBUBYHCUHKOCEXJEYKBQKVYKIIEHGRLGHXEOLWAWFOJILOVVRHPKDWIHKNATUHNVRYAQDIVHXFHRZVQWMWVLGSHNNLVZSJLAKIFHXUFXJLXMTBLQVRXXHRFZXGVLRAJIEXPRVOSMNPKEPDTLPRWMJAZPKLQUZAALGZXGVLKLGJTUIITDSUREZXJERXZSHMPSTMTEOEPAPJHSMFNBYVQUZAALGAYDNMPAQOWTUHDBVTSMUEUIMVHQGVRWAEFSPEMPVEPKXZYWLKJAGWALTVYYOBYIXOKIHPDSEVLEVRVSGBJOGYWFHKBLGLXYAMVKISKIEHYIMAPXUOISKPVAGNMZHPWTTZPVXFCCDTUHJHWLAPFYULTBUXJLNSIJVVYOVDJSOLXGTGRVOSFRIICTMKOJFCQFKTINQBWVHGTENLHHOGCSPSFPVGJOKMSIFPRZPAASATPTZFTPPDPORRFTAXZPKALQAWMIUDBWNCTLEFKOZQDLXBUXJLASIMRPNMBFZCYLVWAPVFQRHZVZGZEFKBYIOOFXYEVOWGBBXVCBXBAWGLQKCMICRRXMACUOIKHQUAJEGLOIJHHXPVZWJEWBAFWAMLZZRXJEKAHVFASMULVVUTTGK",
+		"BPSRAUNOHCWCBGITMPJQFMEXCXYCIAGPSXCPSXWWEROQCOPITRAEBENTGAYCPMSXPQNYWCDQEVJMAVIDQRZEQESBPCEWCXCYCVYGYCWI",
+		"la Declaration des droits avait un grand nombre de partisans et quelques adversaires ; tous avaient raison et elle etait à la fois necessaire et dangereuse ; necessaire pour marcher suivant l'ordre des idees politiques ; dangereuse pour le peuple qui se meprend facilement et qui ne sait pas qu'il n'y a point de droits sans devoirs ; que pour jouir des uns, il faut se soumettre aux autres. Il en devait naitre une infinite de pretentions",
+		"GZGT",
+		NULL
+	};
+	
 	string input;
 	
-	switch ( atoi( argv[1] ) ) {
-		case 1:
-			input = "zbpuevpuqsdlzgllksousvpasfpddggaqwptdgptzweemqzrdjtddefekeferdprrcyndgluaowcnbptzzzrbvpssfpashpncotemhaeqrferdlrlwwertlussfikgoeuswotfdgqsyasrlnrzppdhtticfrciwurhcezrpmhtpuwiyenamrdbzyzwelzucamrptzqseqcfgdrfrhrpatsepzgfnaffisbpvblisrplzgnemswaqoxpdseehbeeksdptdttqsdddgxurwnidbdddplncsd";
-			break;
-		case 2:
-			input = "gmyxzoocxziancxktanmyolupjrztgxwshctzluibuicyzwxyqtvqxzukibkotuxkagbknmimmzzyajvjzampqyzloinoiqknaumbknknvkaiakgwtnilvvzvqydmvjcximrvzkilxzqtomrgqmdjrzyazvzmmyjgkoaknkuiaivknvvy";
-			break;
-		case 3:
-			input = "iefomntuohenwfwsjbsfftpgsnmhzsbbizaomosiuxycqaelrwsklqzekjvwsivijmhuvasmvwjewlzgubzlavclhgmuhwhakookakkgmrelgeefvwjelksedtyhsgghbamiyweeljcemxsohlnzujagkshakawwdxzcmvkhuwswlqwtmlshojbsguelgsumlijsmlbsixuhsdbysdaolfatxzofstszwryhwjenuhgukwzmshbagigzzgnzhzsbtzhalelosmlasjdttqzeswwwrklfguzl";
-			break;
-		case 4:
-			input = "MOMUDEKAPVTQEFMOEVHPAJMIICDCTIFGYAGJSPXYALUYMNSMYHVUXJELEPXJFXGCMJHKDZRYICUHYPUSPGIGMOIYHFWHTCQKMLRDITLXZLJFVQGHOLWCUHLOMDSOEKTALUVYLNZRFGBXPHVGALWQISFGRPHJOOFWGUBYILAPLALCAFAAMKLGCETDWVOELJIKGJBXPHVGALWQCSNWBUBYHCUHKOCEXJEYKBQKVYKIIEHGRLGHXEOLWAWFOJILOVVRHPKDWIHKNATUHNVRYAQDIVHXFHRZVQWMWVLGSHNNLVZSJLAKIFHXUFXJLXMTBLQVRXXHRFZXGVLRAJIEXPRVOSMNPKEPDTLPRWMJAZPKLQUZAALGZXGVLKLGJTUIITDSUREZXJERXZSHMPSTMTEOEPAPJHSMFNBYVQUZAALGAYDNMPAQOWTUHDBVTSMUEUIMVHQGVRWAEFSPEMPVEPKXZYWLKJAGWALTVYYOBYIXOKIHPDSEVLEVRVSGBJOGYWFHKBLGLXYAMVKISKIEHYIMAPXUOISKPVAGNMZHPWTTZPVXFCCDTUHJHWLAPFYULTBUXJLNSIJVVYOVDJSOLXGTGRVOSFRIICTMKOJFCQFKTINQBWVHGTENLHHOGCSPSFPVGJOKMSIFPRZPAASATPTZFTPPDPORRFTAXZPKALQAWMIUDBWNCTLEFKOZQDLXBUXJLASIMRPNMBFZCYLVWAPVFQRHZVZGZEFKBYIOOFXYEVOWGBBXVCBXBAWGLQKCMICRRXMACUOIKHQUAJEGLOIJHHXPVZWJEWBAFWAMLZZRXJEKAHVFASMULVVUTTGK";
-			break;
-		case 5:
-			input = "BPSRAUNOHCWCBGITMPJQFMEXCXYCIAGPSXCPSXWWEROQCOPITRAEBENTGAYCPMSXPQNYWCDQEVJMAVIDQRZEQESBPCEWCXCYCVYGYCWI";
-			break;
-		default:
-			cerr << "Invalid id \"" << argv[1] << "\"" << endl;
-			exit( 1 );
+	int id = atoi( argv[1] );
+	bool valid = id > 0;
+	int i = 0;
+	
+	while ( valid && i < id ) {
+		if ( inputs[i] == NULL ) {
+			valid = false;
+		}
+		++i;
+	}
+	
+	if ( valid ) {
+		input = inputs[i-1];
+	} else {
+		cerr << "Invalid id \"" << argv[1] << "\"" << endl;
+		exit( 1 );
 			
 	}
-
+/*
 	array<double, 26> english = {
 		0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228,
 		0.02015, 0.06094, 0.06966, 0.00153, 0.00772, 0.04025,
@@ -229,7 +251,7 @@ int main( int argc, char* argv[] )
 		0.06327, 0.09056, 0.02758, 0.00978, 0.02360, 0.00150,
 		0.01974, 0.00074 
 	};
-
+*/
 	array<double, 26> french = {
 		0.0811,  0.0081,  0.0338,  0.0428,  0.1769,  0.0113,
 		0.0119,  0.0074,  0.0724,  0.0018,  0.0002,  0.0599, 
@@ -246,11 +268,13 @@ int main( int argc, char* argv[] )
 	int freq = 0;
 	if ( argc > 2 ) freq = atoi( argv[2] ); 
 
+/*
 	VigenereCryptanalysis vc_en(english);
 	pair<string, string> output_en = vc_en.analyze(input, freq);
 
 	cout << "Key: "  << output_en.second << endl;
 	cout << "Text: " << output_en.first << endl;
+*/
 
 	VigenereCryptanalysis vc_fr(french);
 	pair<string, string> output_fr = vc_fr.analyze(input, freq);
